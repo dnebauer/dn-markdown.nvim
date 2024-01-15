@@ -1,0 +1,372 @@
+*dn-md-utils-nvim.txt*  For Neovim version 0.9  Last change: 2024 January 15
+
+==============================================================================
+Table of Contents                                         *dn_md_utils.contents*
+
+Introduction ··············································· |dn_md_utils.intro|
+Dependencies ·············································· |dn_md_utils.depend|
+Features ················································ |dn_md_utils.features|
+Functions ·············································· |dn_md_utils.functions|
+Mappings ················································ |dn_md_utils.mappings|
+Commands ················································ |dn_md_utils.commands|
+Autocommands ············································ |dn_md_utils.autocmds|
+
+==============================================================================
+Introduction                                                 *dn_md_utils.intro*
+
+An auxiliary filetype plugin for the markdown language.
+
+The plugin author uses the |vim-pandoc| plugin and pander
+(https://github.com/dnebauer/pander) for markdown support. This ftplugin
+is intended to address gaps in markdown support provided by those tools.
+
+==============================================================================
+Dependencies                                                *dn_md_utils.depend*
+
+Pandoc is used to generate output. It is not provided by this ftplugin,
+which depends on the |vim-pandoc| plugin and assumes pander
+(https://github.com/dnebauer/pander) is installed.
+
+This ftplugin also depends on the dn-utils plugin
+(https://github.com/dnebauer/dn-utils.nvim).
+
+==============================================================================
+Features                                                  *dn_md_utils.features*
+
+The major features of this ftplugin are support for yaml metadata blocks,
+adding figures, cleaning up output file and directories, and altering the
+pandoc command line arguments.
+
+Metadata ~
+
+Pandoc-flavoured markdown uses a yaml-style metadata block at the top of
+the file to specify values used by pandoc for document processing. With
+pander (https://github.com/dnebauer/pander) installed the metadata block
+can also specify pander style keywords which, in turn, specify metadata
+values and command-line options used by pandoc for document processing.
+
+This ftplugin assumes the following default yaml-metadata block is used
+at the top of documents:
+>
+    ---
+    title:  "[][source]"
+    author: "[][author]"
+    date:   ""
+    style:  [Standard, Latex14pt]
+            # Latex8-12|14|17|20pt; SectNewpage; PageBreak; Include
+    ---
+<
+The reference-style links are defined at the end of the document. The
+default boilerplate for this is:
+>
+    [comment]: # (URLs)
+
+       [author]:
+
+       [source]:
+<
+The default metadata block and reference link definitions are added to a
+document by the function |dn_md_utils.add_boilerplate|, which can be
+called using the command |dn_md_utils.MUAddBoilerplate| and mappings
+|dn_md_utils.<Leader>ab|.
+
+Images ~
+
+A helper function, mapping and command are provided to assist with adding
+figures. They assume the images are defined using reference links with
+optional attributes, and that all reference links are added to the end of
+the document prefixed with three spaces. For example:
+>
+    See @fig:display and {@fig:packed}.
+
+    ![Tuck boxes displayed][display]
+
+    ![Tuck boxes packed away][packed]
+
+    [comment]: # (URLs)
+
+       [display]: resources/displayed.png "Tuck boxes displayed"
+       {#fig:display .class width="50%"}
+
+       [packed]: resources/packed.png "Tuck boxes packed away"
+       {#fig:packed .class width="50%"}
+<
+A figure is inserted on the following line using the
+|dn_md_utils.insert_figure| function, which can be called using the
+command |dn_md_utils.MUInsertFigure| and mapping |dn_md_utils.<Leader>fig|.
+
+Tables ~
+
+A helper function, mapping and command are provided to assist with adding
+tables. More specifically, they aid with adding the caption and id
+definition following the table. The syntax used is that expected by the
+pandoc-tablenos filter (https://github.com/tomduck/pandoc-tablenos). In
+this example:
+>
+    \*@tbl:simple is a simple table.
+
+    A B
+    - -
+    0 1
+
+    Table: A simple table. {#tbl:simple}
+<
+the definition is "Table: A simple table. {#tbl:simple}".
+
+The definition is inserted on the following line using the
+|dn_md_utils.insert_table_definition| function, which can be called using
+the command |dn_md_utils.MUInsertTable| and mapping
+|dn_md_utils.<Leader>tbl|.
+
+Include Files ~
+
+A helper function, mapping and command are provided to assist with
+including external markdown files, or subdocuments, in the current
+document. More specifically, an "include" directive is inserted. The
+markdown file specified in the directive is included in the output file.
+
+The include directive is processed by the "include-files" lua filter which
+is available from the pandoc/lua-filters github repository
+(https://github.com/pandoc/lua-filters).
+
+The include directive has the format:
+>
+```{.include}
+ file_1.md
+ ```
+<
+or:
+>
+```{.include shift-heading-level-by=X}
+file_1.md
+```
+<
+depending on whether a heading shift value is specified.
+
+The default behaviour of the "include-files" lua filter is to include
+subdocuments unchanged. If a "shift-heading-level-by" value is specified,
+all headings in subdocuments are "shifted" to lesser heading levels by the
+number of steps specified. For example, a value of 2 would result in
+top-level headers in subdocuments becoming third-level headers, with other
+header levels shifted accordingly.
+
+If the "automatic shifting" feature of the plugin is enabled (by using the
+metadata flag "include-auto") the "shift-heading-level-by" option behaves
+differently. See
+https://github.com/pandoc/lua-filters/tree/master/include-files for more
+details.
+
+The "include" directive is inserted on the following line using the
+|dn_md_utils.insert_files| function, which can be called using the command
+|dn_md_utils.MUInsertFiles| and mapping |dn_md_utils.<Leader>fil|.
+
+Output ~
+
+This ftplugin leaves the bulk of output generation to the |vim-pandoc|
+plugin.
+
+This ftplugin provides a mapping, command and function for deleting
+output files and temporary output directories. The term "clean" is used,
+as in the makefile keyword that deletes all working and output files.
+
+Cleaning of output only occurs if the specified buffers are associated
+with a file and have a markdown filetype - either "markdown", "pandoc",
+and "markdown.pandoc". For a given buffer the directory searched for
+items to delete is the directory in which the file in the current buffer
+is located.
+
+If the file being edited is "FILE.ext", the files that will be deleted
+have names like "FILE.html" and "FILE.pdf" (see function
+|dn_md_utils.clean_buffer| for a complete list). The temporary output
+subdirectory ".tmp" will also be recursively force-deleted.
+
+Warning: this ftplugin does not check that it is safe to delete files and
+directories identified for deletion. For example, it does not check
+whether any of them are symlinks to other locations. Also be aware that
+directories are forcibly and recursively deleted, as with the *nix shell
+command "rm -fr".
+
+When a markdown buffer is closed (actually when the |BufDelete| event
+occurs), this ftplugin checks for output files/directories and, if any
+are found, asks the user whether to delete them. If the user confirms
+deletion they are removed. When vim exits (actually, when the
+|VimLeavePre| event occurs) this ftplugin looks for any markdown buffers
+and looks in their respective directories for output files/directories
+and, if any are found, asks the user whether to delete them. See
+|dn_md_utils.autocmds| for further details.
+
+Output files and directories associated with the current buffer can be
+deleted at any time by using the function |dn_md_utils.clean_buffer|
+function, which can be called using the command
+|dn_md_utils.MUCleanOutput| and mapping |dn_md_utils.<Leader>co|.
+
+Altering pandoc compiler arguments ~
+
+The |vim-pandoc| plugin provides the string variable
+|g:pandoc#compiler#arguments| for users to configure. Any arguments it
+contains are automatically passed to pandoc when the `:Pandoc` command is
+invoked. This ftplugin enables the user to make changes to the arguments
+configured by this variable. The parser used by this ftplugin is very
+simple, so all arguments in the value for |g:pandoc#compiler#arguments|
+must be separated by one or more spaces and have one of the following
+forms:
+• --arg-with-no-value
+• --arg="value"
+
+The number of leading dashes can be from one to three.
+
+To add an argument and value such as "-Vlang:spanish", treat it as though
+it were an argument such as "--arg-with-no-value".
+
+This is only one method of specifying compiler arguments. For example,
+another method is using the document yaml metadata block. If highlight
+style is specified by multiple methods, the method that "wins" may depend
+on a number of factors. Trial and error may be necessary to determine how
+different methods of setting compiler arguments interact on a particular
+system.
+
+==============================================================================
+Functions                                                *dn_md_utils.functions*
+
+dn_md_utils.add_boilerplate()                      *dn_md_utils.add_boilerplate*
+    Adds pander/markdown boilerplate to the top and bottom of the document.
+
+    Returns: ~
+        (nil)  No return value
+
+
+dn_md_utils.clean_all_buffers({opts})            *dn_md_utils.clean_all_buffers*
+    Deletes common output artefacts: output files with extensions "htm",
+    "html", "pdf", "epub", and "mobi"; and temporary directories named
+    ".tmp".
+
+    Searches sequentially through all buffers that are both associated with a
+    file name and have a markdown file type.
+
+    Parameters: ~
+        {opts}  (table|nil)  Optional configuration options:
+                             • {confirm} (boolean) Whether to confirm with
+                               user before anything is deleted.
+                               Default=false.
+                             • {pause_end} (boolean) Whether to pause after
+                               action is taken. Default=false.
+                             • {say_none} (boolean) Whether to display a
+                               message if no output artefacts are detected.
+                               Default=false.
+
+    Returns: ~
+        (nil)  No return value
+
+
+dn_md_utils.clean_buffer({opts})                      *dn_md_utils.clean_buffer*
+    Deletes common output artefacts: output files with extensions "htm",
+    "html", "pdf", "epub", and "mobi"; and temporary directories named
+    ".tmp".
+
+    Parameters: ~
+        {opts}  (table|nil)  Optional configuration options:
+                             • {bufnr} (number) Number of buffer to process.
+                               Default=0.
+                             • {confirm} (boolean) Whether to confirm with
+                               user before anything is deleted.
+                               Default=false.
+                             • {pause_end} (boolean) Whether to pause after
+                               action is taken. Default=false.
+                             • {say_none} (boolean) Whether to display a
+                               message if no output artefacts are detected.
+                               Default=false.
+
+    Returns: ~
+        (nil)  No return value
+
+
+dn_md_utils.insert_figure()                          *dn_md_utils.insert_figure*
+    Inserts a figure link on a new line.
+    A reference link definition is added to the end of the file in its own
+    line.
+
+    Returns: ~
+        (nil)  No return value
+
+
+dn_md_utils.insert_file()                              *dn_md_utils.insert_file*
+    Inserts an include directive on a new line.
+
+    Returns: ~
+        (nil)  No return value
+
+
+dn_md_utils.insert_table_definition()      *dn_md_utils.insert_table_definition*
+    Inserts a table caption and id line as expected by pandoc-tablenos to
+    follow a table.
+
+    Returns: ~
+        (nil)  No return value
+
+
+==============================================================================
+Mappings                                                  *dn_md_utils.mappings*
+
+                                                       *dn_md_utils.<Leader>xab*
+This mapping calls the function |dn_md_utils.add_boilerplate| in modes
+"n" and "i".
+
+                                                       *dn_md_utils.<Leader>fig*
+This mapping calls the function |dn_md_utils.insert_figure| in modes "n"
+and "i".
+
+                                                       *dn_md_utils.<Leader>fil*
+This mapping calls the function |dn_md_utils.insert_file| in modes "n"
+and "i".
+
+                                                       *dn_md_utils.<Leader>tbl*
+This mapping calls the function |dn_md_utils.insert_table_definition| in
+modes "n" and "i".
+
+==============================================================================
+Commands                                                  *dn_md_utils.commands*
+
+                                                  *dn_md_utils.MUAddBoilerplate*
+Calls function |dn_md_utils.add_boilerplate| to add a metadata header
+template, including title, author, date, and (pander) styles, and a
+footer template for url reference links.
+
+                                                    *dn_md_utils.MUInsertFigure*
+Calls function |dn_md_utils.insert_figure| to insert a figure link on the
+following line and a corresponding link definition is added to the bottom
+of the document.
+
+                                                      *dn_md_utils.MUInsertFile*
+Calls function |dn_md_utils.insert_file| to insert an include directive
+on the following line.
+
+                                                     *dn_md_utils.MUInsertTable*
+Calls function |dn_md_utils.insert_table_definition| to insert a table
+caption and id on the following line.
+
+==============================================================================
+Autocommands                                              *dn_md_utils.autocmds*
+
+                                                 *dn_md_utils.autocmd_BufDelete*
+At buffer deletion the |dn_md_utils.clean_buffer| function is run to
+optionally delete output artefacts (file and directories) if the buffer
+has a markdown filetype and is associated with a file. This autocmd is
+part of the "dn_markdown" augroup.
+
+Noice has to be disabled before running this function because if it is
+running during the BufDelete event it will prevent display of the
+function's user feedback. This autocmd is part of the "dn_disablenoice"
+augroup.
+
+                                               *dn_md_utils.autocmd_VimLeavePre*
+During vim exit the |dn_md_utils.clean_all_buffers| function is run to
+optionally delete output artefacts (file and directories) from all
+markdown buffers associated with files. This autocmd is part of the "
+dn_markdown" augroup.
+
+Noice has to be disabled before running this function because if it is
+running during the VimLeavePre event it will prevent display of the
+function's user feedback. This autocmd is part of the "dn_disablenoice"
+augroup.
+
+vim:tw=78:ts=8:noet:ft=help:norl:
