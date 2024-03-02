@@ -771,19 +771,14 @@ end
 
 ---@mod dn_markdown.mappings Mappings
 
--- \xab [n,i]
+-- \ab [n,i]
 
----@tag dn_markdown.<Leader>xab
+---@tag dn_markdown.<Leader>ab
 ---@brief [[
 ---This mapping calls the function |dn_markdown.add_boilerplate| in modes
 ---"n" and "i".
 ---@brief ]]
-vim.keymap.set(
-	{ "n", "i" },
-	"<Leader>xab",
-	dn_markdown.add_boilerplate,
-	{ desc = "Insert pander/markdown boilerplate" }
-)
+vim.keymap.set({ "n", "i" }, "<Leader>ab", dn_markdown.add_boilerplate, { desc = "Insert pander/markdown boilerplate" })
 
 -- \fig [n,i]
 

@@ -307,7 +307,7 @@ dn_markdown.insert_table_definition()      *dn_markdown.insert_table_definition*
 ==============================================================================
 Mappings                                                  *dn_markdown.mappings*
 
-                                                       *dn_markdown.<Leader>xab*
+                                                        *dn_markdown.<Leader>ab*
 This mapping calls the function |dn_markdown.add_boilerplate| in modes
 "n" and "i".
 
