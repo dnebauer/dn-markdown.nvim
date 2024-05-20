@@ -71,7 +71,7 @@
 ---optional attributes, and that all reference links are added to the end of
 ---the document prefixed with three spaces. For example:
 --->
----    See @fig:display and {@fig:packed}.
+---    [@Fig:display] and [@fig:packed] display the tuck boxes.
 ---
 ---    ![Tuck boxes displayed][display]
 ---
@@ -85,19 +85,21 @@
 ---       [packed]: resources/packed.png "Tuck boxes packed away"
 ---       {#fig:packed .class width="50%"}
 ---<
----A figure is inserted on the following line using the
----markdown.insert_figure| function, which can be called using the
----command |dn_markdown.MUInsertFigure| and mapping |dn_markdown.<Leader>fig|.
+---The syntax used is that expected by the pandoc-crossref filter
+---(https://github.com/lierdakil/pandoc-crossref). A figure is inserted on
+---the following line using the markdown.insert_figure| function, which can
+---be called using the command |dn_markdown.MUInsertFigure| and mapping
+---|dn_markdown.<Leader>fig|.
 ---
 ---Tables ~
 ---
 ---A helper function, mapping and command are provided to assist with adding
 ---tables. More specifically, they aid with adding the caption and id
 ---definition following the table. The syntax used is that expected by the
----pandoc-tablenos filter (https://github.com/tomduck/pandoc-tablenos). In
+---pandoc-crossref filter (https://github.com/lierdakil/pandoc-crossref). In
 ---this example:
 --->
----    \*@tbl:simple is a simple table.
+---    [@Tbl:simple] is a simple table.
 ---
 ---    A B
 ---    - -
@@ -105,7 +107,10 @@
 ---
 ---    Table: A simple table. {#tbl:simple}
 ---<
----the definition is "Table: A simple table. {#tbl:simple}".
+---the definition is "Table: A simple table. {#tbl:simple}". (Strictly
+---speaking, the filter expects the caption line to start with a colon, but
+---it is possible to precede the colon with the word "Table" and this better
+---conveys the line's meaning to the reader.)
 ---
 ---The definition is inserted on the following line using the
 ---|dn_markdown.insert_table_definition| function, which can be called using
@@ -125,15 +130,15 @@
 ---
 ---The include directive has the format:
 --->
----```{.include}
---- file_1.md
---- ```
+---    ```{.include}
+---    file_1.md
+---    ```
 ---<
 ---or:
 --->
----```{.include shift-heading-level-by=X}
----file_1.md
----```
+---    ```{.include shift-heading-level-by=X}
+---    file_1.md
+---    ```
 ---<
 ---depending on whether a heading shift value is specified.
 ---
