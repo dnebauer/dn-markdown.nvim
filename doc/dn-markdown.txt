@@ -294,6 +294,25 @@ dn_markdown.insert_figure()                          *dn_markdown.insert_figure*
         (nil)  No return value
 
 
+dn_markdown.insert_figure_reference()      *dn_markdown.insert_figure_reference*
+    Select an existing figure reference and insert it after the cursor.
+
+    The inserted reference uses the format of the "pandoc.crossref" filter,
+    e.g., "[@fig:REF]".
+
+    Since the user selection function is asynchronous, other processes, such
+    as linters, can redraw the screen and reposition the cursor before the
+    figure reference is inserted. One of the commonest issues is processes
+    that remove trailing spaces removing the space intended to precede the
+    figure reference. Two things are done to try and mitigate these issues:
+    • repositioning the cursor to its original location immediately before
+      pasting
+    • inserting a space before the figure reference.
+
+    Returns: ~
+        (nil)  No return value
+
+
 dn_markdown.insert_file()                              *dn_markdown.insert_file*
     Inserts an include directive on a new line.
 
@@ -324,6 +343,10 @@ and "i".
 This mapping calls the function |dn_markdown.insert_file| in modes "n"
 and "i".
 
+                                                      *dn_markdown.<Leader>rfig*
+This mapping calls the function |dn_markdown.insert_figure_reference| in modes
+"n" and "i".
+
                                                        *dn_markdown.<Leader>tbl*
 This mapping calls the function |dn_markdown.insert_table_definition| in
 modes "n" and "i".
@@ -340,6 +363,10 @@ footer template for url reference links.
 Calls function |dn_markdown.insert_figure| to insert a figure link on the
 following line and a corresponding link definition is added to the bottom
 of the document.
+
+                                           *dn_markdown.MUInsertFigureReference*
+Calls function |dn_markdown.insert_figure_reference| to select a figure
+reference and insert it after the cursor.
 
                                                       *dn_markdown.MUInsertFile*
 Calls function |dn_markdown.insert_file| to insert an include directive
