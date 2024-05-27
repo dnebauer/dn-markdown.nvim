@@ -328,6 +328,25 @@ dn_markdown.insert_table_definition()      *dn_markdown.insert_table_definition*
         (nil)  No return value
 
 
+dn_markdown.insert_table_reference()        *dn_markdown.insert_table_reference*
+    Select an existing table reference and insert it after the cursor.
+
+    The inserted reference uses the format of the "pandoc.crossref" filter,
+    e.g., "[@tbl:REF]".
+
+    Since the user selection function is asynchronous, other processes, such
+    as linters, can redraw the screen and reposition the cursor before the
+    table reference is inserted. One of the commonest issues is processes
+    that remove trailing spaces removing the space intended to precede the
+    table reference. Two things are done to try and mitigate these issues:
+    • repositioning the cursor to its original location immediately before
+      pasting
+    • inserting a space before the table reference.
+
+    Returns: ~
+        (nil)  No return value
+
+
 ==============================================================================
 Mappings                                                  *dn_markdown.mappings*
 
@@ -345,6 +364,10 @@ and "i".
 
                                                       *dn_markdown.<Leader>rfig*
 This mapping calls the function |dn_markdown.insert_figure_reference| in modes
+"n" and "i".
+
+                                                      *dn_markdown.<Leader>rtbl*
+This mapping calls the function |dn_markdown.insert_table_reference| in modes
 "n" and "i".
 
                                                        *dn_markdown.<Leader>tbl*
@@ -375,6 +398,10 @@ on the following line.
                                                      *dn_markdown.MUInsertTable*
 Calls function |dn_markdown.insert_table_definition| to insert a table
 caption and id on the following line.
+
+                                            *dn_markdown.MUInsertTableReference*
+Calls function |dn_markdown.insert_table_reference| to select a table
+reference and insert it after the cursor.
 
 ==============================================================================
 Autocommands                                              *dn_markdown.autocmds*

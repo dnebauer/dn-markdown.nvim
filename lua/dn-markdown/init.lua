@@ -1568,6 +1568,163 @@ function dn_markdown.insert_table_definition()
 	end
 end
 
+-- insert_table_reference()
+
+---Select an existing table reference and insert it after the cursor.
+---
+---The inserted reference uses the format of the "pandoc.crossref" filter,
+---e.g., "[@tbl:REF]".
+---
+---Since the user selection function is asynchronous, other processes, such
+---as linters, can redraw the screen and reposition the cursor before the
+---table reference is inserted. One of the commonest issues is processes
+---that remove trailing spaces removing the space intended to precede the
+---table reference. Two things are done to try and mitigate these issues:
+---• repositioning the cursor to its original location immediately before
+---  pasting
+---• inserting a space before the table reference.
+---@return nil _ No return value
+function dn_markdown.insert_table_reference()
+	-- get cursor location as soon as possible
+	-- • the selection is asynchronous, so various processes can redraw the
+	--   screen and reposition the cursor while the user selects the table
+	--   label to insert
+	local cursor_line, cursor_col = unpack(vim.api.nvim_win_get_cursor(0))
+	-- can only operate on a file
+	local fp = vim.api.nvim_buf_get_name(0)
+	if fp == "" then
+		util.error("Buffer is not associated with a file")
+		return
+	end
+	vim.cmd.update({ args = {}, bang = true })
+	-- obtain pandoc abstract syntax tree
+	local cmd = { "pandoc", "-f", "markdown", "-t", "json", fp }
+	local ret = util.execute_shell_command(unpack(cmd))
+	if ret.exit_status ~= 0 then
+		util.error(ret.stderr)
+		return
+	end
+	-- • pandoc warnings may be captured in output, so trim outside curly braces
+	local json_output = string.match(ret.stdout, "^.-(%{.*%}).-$")
+	-- • decode output
+	local ast, err_pos, err_msg = json.decode(json_output, 1, nil)
+	if err_msg ~= nil then
+		util.error(sf("ast data extraction error at position %s: %s", err_pos, err_msg))
+		return
+	end
+	if type(ast) ~= "table" then
+		util.error(sf("expected AST as table, got: %s", type(ast)))
+		return
+	end
+	-- search AST for defined tables
+	-- • this example table definition:
+	--   >
+	--     Table: The Forgotten Age cycle. [#tbl:forgotten]
+	--   <
+	--   is represented deep in the ast output table as something like:
+	--   >
+	--     {
+	--       "t": "Table",
+	--       "c": [
+	--         ["", [], []],
+	--         [
+	--           null,
+	--           [
+	--             {
+	--               "t": "Plain",
+	--               "c": [
+	--                 { "t": "Str", "c": "The" },
+	--                 { "t": "Space" },
+	--                 { "t": "Str", "c": "Forgotten" },
+	--                 { "t": "Space" },
+	--                 { "t": "Str", "c": "Age" },
+	--                 { "t": "Space" },
+	--                 { "t": "Str", "c": "cycle." },
+	--                 { "t": "Space" },
+	--                 { "t": "Str", "c": "[#tbl:forgotten]" }
+	--               ]
+	--             }
+	--           ]
+	--         ],
+	--         ...,
+	--       ],
+	--     }
+	--   <
+	local tbl_labels = {}
+	local _examine_table
+	_examine_table = function(subtable)
+		assert(type(subtable) == "table", "Expected table to examine, got " .. type(subtable))
+		-- extract table label if have found a 'Table' subtable
+		-- • this algorithm is more complex than for figures because:
+		--   - the label is buried 5 tables deep rather than 2
+		--   - one step requires extracting the last item in a list table
+		if subtable["t"] ~= nil and subtable["t"] == "Table" then
+			if
+				subtable["c"] ~= nil
+				and subtable["c"][2] ~= nil
+				and subtable["c"][2][2] ~= nil
+				and subtable["c"][2][2][1] ~= nil
+				and subtable["c"][2][2][1]["c"] ~= nil
+			then
+				local deep_subtable = subtable["c"][2][2][1]["c"]
+				local last_item = deep_subtable[#deep_subtable]
+				if last_item["c"] ~= nil then
+					local subvalue = last_item["c"]
+					local tbl_label = subvalue:match("^%[#tbl:(%S+)%]$")
+					if tbl_label ~= nil then
+						table.insert(tbl_labels, tbl_label)
+					end
+				end
+			end
+		end
+		-- now examine contents of table
+		for _, v in pairs(subtable) do
+			if type(v) == "table" then
+				_examine_table(v)
+			end
+		end
+	end
+	_examine_table(ast)
+	table.sort(tbl_labels)
+	-- warn if duplicate labels present
+	local lookup_tbl_labels = {}
+	local uniq_tbl_labels = {}
+	local lookup_duplicate_tbl_labels = {}
+	for _, tbl_label in ipairs(tbl_labels) do
+		if lookup_tbl_labels[tbl_label] ~= nil then
+			lookup_duplicate_tbl_labels[tbl_label] = true
+		else
+			lookup_tbl_labels[tbl_label] = true
+			table.insert(uniq_tbl_labels, tbl_label)
+		end
+	end
+	local duplicate_tbl_labels = {}
+	for tbl_label, _ in pairs(lookup_duplicate_tbl_labels) do
+		table.insert(duplicate_tbl_labels, tbl_label)
+	end
+	table.sort(duplicate_tbl_labels)
+	local duplicate_tbl_label_count = util.table_size(duplicate_tbl_labels)
+	if duplicate_tbl_label_count > 0 then
+		local warning = "Duplicate table label"
+		if duplicate_tbl_label_count == 1 then
+			warning = warning .. ": " .. duplicate_tbl_labels[1]
+		else
+			warning = warning .. "s: " .. table.concat(duplicate_tbl_labels, ", ")
+		end
+		util.warning(warning)
+	end
+	-- select table reference and insert it
+	vim.ui.select(uniq_tbl_labels, { prompt = "Select table label to insert" }, function(tbl_label)
+		if tbl_label == nil then
+			return
+		end
+		local tbl_reference = sf(" [@tbl:%s]", tbl_label)
+		-- reposition cursor in case it moved
+		vim.api.nvim_win_set_cursor(0, { cursor_line, cursor_col })
+		vim.api.nvim_paste(tbl_reference, false, -1)
+	end)
+end
+
 -- MAPPINGS
 
 ---@mod dn_markdown.mappings Mappings
@@ -1612,6 +1769,15 @@ vim.keymap.set(
 	dn_markdown.insert_figure_reference,
 	{ desc = "Insert a figure reference" }
 )
+
+-- \rtbl [n,i]
+
+---@tag dn_markdown.<Leader>rtbl
+---@brief [[
+---This mapping calls the function |dn_markdown.insert_table_reference| in modes
+---"n" and "i".
+---@brief ]]
+vim.keymap.set({ "n", "i" }, "<Leader>rtbl", dn_markdown.insert_table_reference, { desc = "Insert a table reference" })
 
 -- \tbl [n,i]
 
@@ -1682,6 +1848,17 @@ end, { desc = "Insert an include directive" })
 vim.api.nvim_create_user_command("MUInsertTable", function()
 	dn_markdown.insert_table_definition()()
 end, { desc = "Insert table definition" })
+
+-- MUInsertTableReference
+
+---@tag dn_markdown.MUInsertTableReference
+---@brief [[
+---Calls function |dn_markdown.insert_table_reference| to select a table
+---reference and insert it after the cursor.
+---@brief ]]
+vim.api.nvim_create_user_command("MUInsertTableReference", function()
+	dn_markdown.insert_table_reference()
+end, { desc = "Insert a table reference" })
 
 -- AUTOCOMMANDS
 
