@@ -1362,16 +1362,16 @@ function dn_markdown.insert_figure_reference()
 	--   is represented deep in the ast output table as something like:
 	--   >
 	--     {
-	--         ["t"]  =  "Figure",
-	--         ["c"] = {
-	--             [1] = {
-	--                 [1]  =  "fig:ready-to-fold",
-	--                 [2] = {},
-	--                 [3] = {},
-	--             },
-	--             [2] = { ... },
-	--             [3] = { ... },
+	--       ["t"]  =  "Figure",
+	--       ["c"] = {
+	--         [1] = {
+	--           [1]  =  "fig:ready-to-fold",
+	--           [2] = {},
+	--           [3] = {},
 	--         },
+	--         [2] = { ... },
+	--         [3] = { ... },
+	--       },
 	--     },
 	--   <
 	local fig_labels = {}
@@ -1426,6 +1426,9 @@ function dn_markdown.insert_figure_reference()
 	end
 	-- select figure reference and insert it
 	vim.ui.select(uniq_fig_labels, { prompt = "Select figure label to insert" }, function(fig_label)
+		if fig_label == nil then
+			return
+		end
 		local fig_reference = sf(" [@fig:%s]", fig_label)
 		-- reposition cursor in case it moved
 		vim.api.nvim_win_set_cursor(0, { cursor_line, cursor_col })
