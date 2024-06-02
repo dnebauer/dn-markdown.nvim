@@ -987,7 +987,7 @@ function _clean_output(opts)
 			table.insert(output_list, dir)
 		end
 		local question = {}
-		table.insert(question, { sf(" \n%s output:\n", md_fp_parts.file), "Question" })
+		table.insert(question, { sf(" \n%s output artefacts:\n", md_fp_parts.file), "Question" })
 		for _, output_item in ipairs(output_list) do
 			table.insert(question, { sf("- %s\n", output_item), "Question" })
 		end
