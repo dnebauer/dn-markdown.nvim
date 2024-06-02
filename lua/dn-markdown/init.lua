@@ -986,8 +986,13 @@ function _clean_output(opts)
 		for _, dir in ipairs(artefacts.dirs) do
 			table.insert(output_list, dir)
 		end
-		msg = sf("Delete %s output (%s) [y/N]", md_fp_parts.file, table.concat(output_list, ", "))
-		vim.api.nvim_echo({ { msg, "Question" } }, true, {})
+		local question = {}
+		table.insert(question, { sf("%s output:\n", md_fp_parts.file), "Question" })
+		for _, output_item in ipairs(output_list) do
+			table.insert(question, { sf("- %s\n", output_item), "Question" })
+		end
+		table.insert(question, { "Delete output [y/N]", "Question" })
+		vim.api.nvim_echo(question, true, {})
 		local answer = string.lower(vim.fn.nr2char(vim.fn.getchar()))
 		vim.api.nvim_out_write(answer)
 		if answer ~= "y" then
