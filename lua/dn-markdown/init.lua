@@ -950,7 +950,7 @@ function _clean_output(opts)
 	local contents = util.dir_contents(md_fp_parts.dir)
 	local files, dirs = contents.files, contents.dirs
 	-- • get candidate output artefacts
-	local clean_suffixes = { "htm", "html", "pdf", "epub", "mobi" }
+	local clean_suffixes = { "epub", "htm", "html", "mobi", "pdf" }
 	local clean_subdirs = { ".tmp" }
 	local candidate = {}
 	candidate.files = vim.tbl_map(function(suffix)
