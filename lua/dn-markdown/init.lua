@@ -1020,7 +1020,11 @@ function _clean_output(opts)
 	local ui_output = {}
 	if #deleted > 0 then
 		retval = true
-		msg = "Deleted " .. table.concat(deleted, ", ") .. "\n"
+		msg = "Deleted:"
+		for _, file in ipairs(deleted) do
+			msg = msg .. "\n- " .. file
+		end
+		msg = msg .. "\n"
 		table.insert(ui_output, { msg })
 	end
 	if #failed > 0 then
