@@ -1264,7 +1264,7 @@ function dn_markdown.insert_figure()
 		-- • collapse multiple sequential dashes
 		default = default:gsub("%-+", "%-")
 		-- get id
-		prompt = "Enter figure id (empty to abort "
+		prompt = "Enter figure id (empty to abort)"
 		vim.ui.input({ prompt = prompt, default = default }, function(input)
 			if input and input:len() ~= 0 then
 				if not input:match("^[a-z_-]+$") then
