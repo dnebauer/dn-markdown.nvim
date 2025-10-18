@@ -235,6 +235,10 @@ if vim.g.dn_markdown_loaded then
 end
 vim.g.dn_markdown_loaded = true
 
+-- private plugin configuration options
+-- • none defined at this time
+local _config = {}
+
 -- MODULES
 
 -- dkjson
@@ -1046,6 +1050,30 @@ function _clean_output(opts)
 		vim.cmd.echo("\n")
 	end
 	return retval
+end
+
+-- config([opts])
+
+---@private
+---Function required by several popular plugin managers.
+---It ignores any options passed to it.
+---
+---@param opts table|nil Configuration options. Ignored.
+---@return nil _ No return value
+function dn_markdown.config(opts)
+	_config = vim.tbl_deep_extend("force", _config, opts or {})
+end
+
+-- setup([opts])
+
+---@private
+---Function required by several popular plugin managers.
+---It ignores any options passed to it.
+---
+---@param opts table|nil Configuration options. Ignored.
+---@return nil _ No return value
+function dn_markdown.setup(opts)
+	dn_markdown.config(opts)
 end
 
 -- PUBLIC FUNCTIONS
