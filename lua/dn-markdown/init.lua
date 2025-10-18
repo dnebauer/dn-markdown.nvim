@@ -1,7 +1,7 @@
 -- DOCUMENTATION
 
 ---@brief [[
----*dn-markdown-nvim.txt*  For Neovim version 0.9  Last change: 2024 January 15
+---*dn-markdown-nvim.txt*  For Neovim version 0.11  Last change: 2025 October 18
 ---@brief ]]
 
 ---@toc dn_markdown.contents
@@ -997,8 +997,15 @@ function _clean_output(opts)
 		end
 		table.insert(question, { "Delete output [y/N]", "Question" })
 		vim.api.nvim_echo(question, true, {})
-		local answer = string.lower(vim.fn.nr2char(vim.fn.getchar()))
-		vim.api.nvim_out_write(answer)
+		--local answer = string.lower(vim.fn.nr2char(vim.fn.getchar()))
+		local input = vim.fn.getchar()
+		-- some special keys return not an integer, but a string representing a byte sequence
+		-- for example, <Ctrl>+<Alt>+4 returns the string "<80><fc>^H^\"
+		if type(input) ~= "number" then
+			return false
+		end
+		local answer = string.lower(vim.fn.nr2char(input))
+		vim.api.nvim_echo({ { answer } }, false, {})
 		if answer ~= "y" then
 			return false
 		end
@@ -1046,7 +1053,7 @@ function _clean_output(opts)
 	end
 	vim.api.nvim_echo(ui_output, true, {})
 	if opts.pause_end then
-		local _ = string.lower(vim.fn.nr2char(vim.fn.getchar()))
+		vim.fn.getchar()
 		vim.cmd.echo("\n")
 	end
 	return retval
