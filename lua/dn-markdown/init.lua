@@ -1,7 +1,7 @@
 -- DOCUMENTATION
 
 ---@brief [[
----*dn-markdown-nvim.txt*  For Neovim version 0.11  Last change: 2025 October 18
+---*dn-markdown-nvim.txt*  For Neovim version 0.12  Last change: 2026 June 21
 ---@brief ]]
 
 ---@toc dn_markdown.contents
@@ -128,6 +128,11 @@
 ---<
 ---This may be preferred for singular references to ensure a consistent style
 ---throughout a document.
+---
+---A captioned figure reference is inserted after the cursor using the
+---|dn_markdown.insert_figure_reference| function, which can be called using
+---the command |dn_markdown.MUInsertFigureReference| and mapping
+---|dn_markdown.<Leader>rfig|.
 ---
 ---Tables ~
 ---
@@ -1968,15 +1973,6 @@ vim.keymap.set({ "n", "i" }, "<Leader>ab", dn_markdown.add_boilerplate, { desc =
 ---@brief ]]
 vim.keymap.set({ "n", "i" }, "<Leader>fig", dn_markdown.insert_graphic, { desc = "Insert figure/image definition" })
 
--- \fil [n,i]
-
----@tag dn_markdown.<Leader>fil
----@brief [[
----This mapping calls the function |dn_markdown.insert_file| in modes "n"
----and "i".
----@brief ]]
-vim.keymap.set({ "n", "i" }, "<Leader>fil", dn_markdown.insert_file, { desc = "Insert an include directive" })
-
 -- \rfig [n,i]
 
 ---@tag dn_markdown.<Leader>rfig
@@ -1991,14 +1987,14 @@ vim.keymap.set(
 	{ desc = "Insert a figure reference" }
 )
 
--- \rtbl [n,i]
+-- \fil [n,i]
 
----@tag dn_markdown.<Leader>rtbl
+---@tag dn_markdown.<Leader>fil
 ---@brief [[
----This mapping calls the function |dn_markdown.insert_table_reference| in modes
----"n" and "i".
+---This mapping calls the function |dn_markdown.insert_file| in modes "n"
+---and "i".
 ---@brief ]]
-vim.keymap.set({ "n", "i" }, "<Leader>rtbl", dn_markdown.insert_table_reference, { desc = "Insert a table reference" })
+vim.keymap.set({ "n", "i" }, "<Leader>fil", dn_markdown.insert_file, { desc = "Insert an include directive" })
 
 -- \tbl [n,i]
 
@@ -2008,6 +2004,15 @@ vim.keymap.set({ "n", "i" }, "<Leader>rtbl", dn_markdown.insert_table_reference,
 ---modes "n" and "i".
 ---@brief ]]
 vim.keymap.set({ "n", "i" }, "<Leader>tbl", dn_markdown.insert_table_definition, { desc = "Insert table definition" })
+
+-- \rtbl [n,i]
+
+---@tag dn_markdown.<Leader>rtbl
+---@brief [[
+---This mapping calls the function |dn_markdown.insert_table_reference| in modes
+---"n" and "i".
+---@brief ]]
+vim.keymap.set({ "n", "i" }, "<Leader>rtbl", dn_markdown.insert_table_reference, { desc = "Insert a table reference" })
 
 -- COMMANDS
 

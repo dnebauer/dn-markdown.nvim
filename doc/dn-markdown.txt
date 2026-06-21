@@ -1,4 +1,4 @@
-*dn-markdown-nvim.txt*  For Neovim version 0.11  Last change: 2025 October 18
+*dn-markdown-nvim.txt*  For Neovim version 0.12  Last change: 2026 June 21
 
 ==============================================================================
 Table of Contents                                         *dn_markdown.contents*
@@ -134,6 +134,11 @@ This reference group syntax can be used for a single reference: >md
 <
 This may be preferred for singular references to ensure a consistent style
 throughout a document.
+
+A captioned figure reference is inserted after the cursor using the
+|dn_markdown.insert_figure_reference| function, which can be called using
+the command |dn_markdown.MUInsertFigureReference| and mapping
+|dn_markdown.<Leader>rfig|.
 
 Tables ~
 
@@ -394,21 +399,21 @@ This mapping calls the function |dn_markdown.add_boilerplate| in modes
 This mapping calls the function |dn_markdown.insert_graphic| in modes "n"
 and "i".
 
-                                                       *dn_markdown.<Leader>fil*
-This mapping calls the function |dn_markdown.insert_file| in modes "n"
-and "i".
-
                                                       *dn_markdown.<Leader>rfig*
 This mapping calls the function |dn_markdown.insert_figure_reference| in modes
 "n" and "i".
 
-                                                      *dn_markdown.<Leader>rtbl*
-This mapping calls the function |dn_markdown.insert_table_reference| in modes
-"n" and "i".
+                                                       *dn_markdown.<Leader>fil*
+This mapping calls the function |dn_markdown.insert_file| in modes "n"
+and "i".
 
                                                        *dn_markdown.<Leader>tbl*
 This mapping calls the function |dn_markdown.insert_table_definition| in
 modes "n" and "i".
+
+                                                      *dn_markdown.<Leader>rtbl*
+This mapping calls the function |dn_markdown.insert_table_reference| in modes
+"n" and "i".
 
 ==============================================================================
 Commands                                                  *dn_markdown.commands*
