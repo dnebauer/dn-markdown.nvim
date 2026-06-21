@@ -33,63 +33,101 @@
 ---
 ---Metadata ~
 ---
----Pandoc-flavoured markdown uses a yaml-style metadata block at the top of
----the file to specify values used by pandoc for document processing. With
----pander (https://github.com/dnebauer/pander) installed the metadata block
----can also specify pander style keywords which, in turn, specify metadata
----values and command-line options used by pandoc for document processing.
+---Pandoc-flavoured markdown uses a yaml-style metadata block at the top of the
+---file to specify values used by pandoc for document processing. With pander
+---(https://github.com/dnebauer/pander) installed the metadata block can also
+---specify pander style keywords which, in turn, specify metadata values and
+---command-line options used by pandoc for document processing.
 ---
----This ftplugin assumes the following default yaml-metadata block is used
----at the top of documents:
---->
+---This ftplugin assumes the following default yaml-metadata block and
+---associated reference-style links are defined at the top of documents: >md
 ---    ---
----    title:  "[][source]"
+---    title: "[][source]"
 ---    author: "[][author]"
----    date:   ""
----    style:  [Standard, Latex14pt]
----            # Latex8-12|14|17|20pt; SectNewpage; PageBreak; Include
+---    date: ""
+---    style: [Standard, Latex14pt]
+---           # Latex8-12|14|17|20pt; SectNewpage; PageBreak; Include
 ---    ---
----<
----The reference-style links are defined at the end of the document. The
----default boilerplate for this is:
---->
----    [comment]: # (URLs)
 ---
----       [author]:
+---    [author]:
 ---
----       [source]:
+---    [source]:
 ---<
 ---The default metadata block and reference link definitions are added to a
----document by the function |dn_markdown.add_boilerplate|, which can be
----called using the command |dn_markdown.MUAddBoilerplate| and mappings
+---document by the function |dn_markdown.add_boilerplate|, which can be called
+---using the command |dn_markdown.MUAddBoilerplate| and mappings
 ---|dn_markdown.<Leader>ab|.
 ---
----Images ~
+---Graphics ~
 ---
 ---A helper function, mapping and command are provided to assist with adding
----figures. They assume the images are defined using reference links with
----optional attributes, and that all reference links are added to the end of
----the document prefixed with three spaces. For example:
---->
----    [@Fig:display] and [@fig:packed] display the tuck boxes.
+---inline images and captioned figures. The syntax used is that expected by the
+---pandoc-crossref filter (https://github.com/lierdakil/pandoc-crossref).
 ---
----    ![Tuck boxes displayed][display]
----
----    ![Tuck boxes packed away][packed]
----
----    [comment]: # (URLs)
----
----       [display]: resources/displayed.png "Tuck boxes displayed"
----       {#fig:display .class width="50%"}
----
----       [packed]: resources/packed.png "Tuck boxes packed away"
----       {#fig:packed .class width="50%"}
+---The minimal definition of a captioned figure is: >md
+---    ![CAPTION](image-file.jpg){#fig:label}
 ---<
----The syntax used is that expected by the pandoc-crossref filter
----(https://github.com/lierdakil/pandoc-crossref). A figure is inserted on
----the following line using the markdown.insert_figure| function, which can
----be called using the command |dn_markdown.MUInsertFigure| and mapping
+---The recommended definition includes a title and alt text as well to ensure
+---accessibility: >md
+---    ![CAPTION](image-file.jpg "TITLE"){#fig:label alt="ALT"}
+---<
+---The user is able to add an optional width parameter (default 80%): >md
+---    ![CAPTION](image-file.jpg "TITLE"){#fig:label alt="ALT"
+---    .class width="80%"}
+---<
+---The minimal definition of an inline image is: >md
+---    ![](image-file.jpg)\␣
+---<
+---with "␣" representing a non-breaking space to force formatting of the
+---graphic as an inline image.
+---
+---The recommended definition also includes caption, title and alt text (to
+---ensure accessibility) and id/label (to ensure an id attribute in output),
+---with the additional benefit of making it easier for the author to later
+---convert the inline image to a captioned figure: >md
+---    ![CAPTION](image-file.jpg "TITLE"){#fig:label alt="ALT"}\␣
+---<
+---
+---Here is a summary of the values sought from the user:
+---
+---              | captioned     inline
+---        value | figure        image
+---      --------+--------------------------
+---         path | required      required
+---      caption | required      recommended
+---        label | required      recommended
+---        title | recommended   recommended
+---          alt | recommended   recommended
+---        width | optional      optional
+---
+---An inline image or captioned figure definition is inserted on the following
+---line using the |dn_markdown.insert_graphic| function, which can be called
+---using the command |dn_markdown.MUInsertGraphic| and mapping
 ---|dn_markdown.<Leader>fig|.
+---
+---A helper function, mapping and command are provided to assist with adding
+---figure references. The syntax used is that expected by the pandoc-crossref
+---filter (https://github.com/lierdakil/pandoc-crossref).
+---
+---The basic image reference format is: >md
+---    @fig:label
+---<
+---or capitalised to capitalise the image reference: >md
+---    @Fig:label
+---<
+---To change the default reference prefix in output, enclose the image
+---reference in square brackets with a prefix, for example: >md
+---    [Picture @fig:label]
+---<
+---To reference multiple images at once enclose the references in square
+---brackets and separate them with semicolons, for excample: >md
+---    [@fig:label1;@fig:label2;@fig:label3]
+---<
+---This reference group syntax can be used for a single reference: >md
+---    [@fig:label]
+---<
+---This may be preferred for singular references to ensure a consistent style
+---throughout a document.
 ---
 ---Tables ~
 ---
@@ -1089,13 +1127,13 @@ end
 
 -- add_boilerplate()
 
----Adds pander/markdown boilerplate to the top and bottom of the document.
+---Adds pander/markdown boilerplate to the top of the document.
 ---@return nil _ No return value
 function dn_markdown.add_boilerplate()
 	-- remember where we parked
 	local line, col = unpack(vim.api.nvim_win_get_cursor(0))
-	-- metadata to be inserted at top of file
-	local metadata = {
+	-- topmatter to be inserted at top of file
+	local topmatter = {
 		"---",
 		'title: "[][source]"',
 		'author: "[][author]"',
@@ -1104,17 +1142,15 @@ function dn_markdown.add_boilerplate()
 		"       # Latex8-12|14|17|20pt, SectNewPage, PageBreak, Include",
 		"---",
 		"",
+		"[author]: ",
+		"[source]: ",
+		"",
 	}
-	-- comment block to be inserted at bottom of file
-	local comment_block = { "", "[command]: # (URLs)", "", "   [author]: ", "", "   [source]: " }
 	-- insert content
 	vim.api.nvim_win_set_cursor(0, { 1, 1 })
-	vim.api.nvim_put(metadata, "l", false, false)
-	local last_line = vim.fn.line("$")
-	vim.api.nvim_win_set_cursor(0, { last_line, 1 })
-	vim.api.nvim_put(comment_block, "l", true, false)
+	vim.api.nvim_put(topmatter, "l", false, false)
 	-- return to where we parked
-	line = line + #metadata
+	line = line + #topmatter
 	vim.api.nvim_win_set_cursor(0, { line, col })
 end
 
@@ -1242,64 +1278,136 @@ function dn_markdown.clean_buffer(opts)
 	--vim.api.nvim_cmd({ cmd = "NoiceEnable" }, {})
 end
 
--- insert_figure()
+-- insert_graphic()
 
----Inserts a figure link on a new line.
----A reference link definition is added to the end of the file in its own
----line.
+---Inserts a captioned figure or inline image definition on a new line.
 ---@return nil _ No return value
-function dn_markdown.insert_figure()
+function dn_markdown.insert_graphic()
 	-- WARNING: if editing this function note that it consists of a chain of
 	--          local functions called in turn through callbacks in
 	--          |vim.ui.input()| calls; this makes the function inherently
 	--          fragile and easy to break
+	--
+	-- INFO: assumes use of the pandoc-crossref filter
+	--
+	-- INFO: the minimal definition of a captioned figure is:
+	--         ![CAPTION](file.jpg){#fig:label}
+	--       the recommended definition also includes title and alt:
+	--         ![CAPTION](file.jpg "TITLE"){#fig:label alt="ALT"}
+	--       to ensure accessibility
+	--
+	-- INFO: the minimal definition of an inline image is:
+	--         ![](file.jpg)\␣
+	--       the preferred definition also includes caption, title, label
+	--       and alt as well:
+	--         ![CAPTION](file.jpg "TITLE"){#fig:label alt="ALT"}\␣
+	--       (with "␣" representing a non-breaking space) to ensure
+	--       accesibility, ensure an id attribute in html output, and in
+	--       case the author later decides to convert the inline image to
+	--       a captioned figure
+	--
+	-- INFO: the user can also add a width attribute (default: 80%) to either
+	--       graphic format, as shown in this inline image definition:
+	--         ![CAPTION](file.jpg "TITLE"){#fig:label alt="ALT"
+	--         .class width=50%}\␣
+	--
+	-- INFO: required, recommended and optional values:
+	--                captioned     inline
+	--         value  figure        image
+	--       ----------------------------------
+	--          path  required      required
+	--       caption  required      recommended
+	--         label  required      recommended
+	--         title  recommended   recommended
+	--           alt  recommended   recommended
+	--         width  optional      optional
+	--
+	-- INFO: while not used here, the basic figure reference format is:
+	--         @fig:label
+	--       or optionally enclosed in square brackets:
+	--         [@fig:label]
+	--       or capitalised to capitalise the figure reference:
+	--         @Fig:label OR [@Fig:label]
 
 	-- pre-declare local functions
-	local _fig_get_caption
-	local _fig_get_id_label
-	local _fig_get_width
-	local _fig_insert
+	local _graphic_get_alt_text
+	local _graphic_get_caption
+	local _graphic_get_filepath
+	local _graphic_get_id_label
+	local _graphic_get_title
+	local _graphic_get_type
+	local _graphic_get_width
+	local _graphic_insert
 
 	-- variables used in multiple local functions
-	local prompt, default
+	local type_fig, type_img = "Captioned figure", "Inline image"
 
-	-- get image filepath
-	prompt = "Enter image filepath (empty to abort)"
-	vim.ui.input({ prompt = prompt, completion = "file" }, function(input)
-		if input and input:len() ~= 0 then
-			if not util.file_readable(input) then
-				util.warning(sf("File '%s' is not readable", input))
+	-- get graphic type
+	_graphic_get_type = function(user_input)
+		user_input = user_input or {}
+		local fig_types = { type_fig, type_img }
+		vim.ui.select(fig_types, { prompt = "Select type (required)" }, function(fig_type)
+			if fig_type == nil then
+				return
 			end
-			local user_input = {}
-			user_input.path = input
-			_fig_get_caption(user_input)
-		end
-	end)
+			user_input.type = fig_type
+			_graphic_get_filepath(user_input)
+		end)
+	end
 
-	-- get image caption
-	_fig_get_caption = function(user_input)
-		prompt = "Enter image caption (empty to abort)"
+	-- get graphic filepath
+	_graphic_get_filepath = function(user_input)
+		-- required for captioned figures and inline images
+		local prompt = "Enter filepath (required)"
+		vim.ui.input({ prompt = prompt, completion = "file" }, function(input)
+			if input and input:len() ~= 0 then
+				if not util.file_readable(input) then
+					util.warning(sf("File '%s' is not readable", input))
+				end
+				user_input.path = input
+				_graphic_get_caption(user_input)
+			end
+		end)
+	end
+
+	-- get graphic caption
+	_graphic_get_caption = function(user_input)
+		-- required for captioned figures, optional for inline images
+		local required = user_input.type:match(type_fig)
+		local fragment = required and "required" or "recommended"
+		local prompt = sf("Enter caption (%s)", fragment)
 		vim.ui.input({ prompt = prompt }, function(input)
 			if input and input:len() ~= 0 then
 				user_input.caption = input
-				_fig_get_id_label(user_input)
+				_graphic_get_id_label(user_input)
+			else
+				-- can proceed to get label if caption not required
+				if not required then
+					_graphic_get_id_label(user_input)
+				end
 			end
 		end)
 	end
 
 	-- get_id/label
-	_fig_get_id_label = function(user_input)
-		-- derive default id from caption
-		-- • make lowercase
-		default = string.lower(user_input.caption)
-		-- • remove illegal characters (%w = alphanumeric)
-		default = default:gsub("[^%w_]", "-")
-		-- • remove leading and trailing dashes
-		default = util.trim_char(default, "-")
-		-- • collapse multiple sequential dashes
-		default = default:gsub("%-+", "%-")
+	_graphic_get_id_label = function(user_input)
+		-- derive default id from caption if it is available
+		local default
+		if user_input.caption then
+			-- • make lowercase
+			default = string.lower(user_input.caption)
+			-- • remove illegal characters (%w = alphanumeric)
+			default = default:gsub("[^%w_]", "-")
+			-- • remove leading and trailing dashes
+			default = util.trim_char(default, "-")
+			-- • collapse multiple sequential dashes
+			default = default:gsub("%-+", "%-")
+		end
 		-- get id
-		prompt = "Enter figure id (empty to abort)"
+		-- • required for captioned figures, optional for inline images
+		local required = user_input.type:match(type_fig)
+		local fragment = required and "required" or "recommended"
+		local prompt = sf("Enter id (%s)", fragment)
 		vim.ui.input({ prompt = prompt, default = default }, function(input)
 			if input and input:len() ~= 0 then
 				if not input:match("^[a-z_-]+$") then
@@ -1307,45 +1415,114 @@ function dn_markdown.insert_figure()
 					return
 				end
 				user_input.id = input
-				_fig_get_width(user_input)
+				_graphic_get_title(user_input)
+			else
+				-- can proceed to get label if caption not required
+				if not required then
+					_graphic_get_title(user_input)
+				end
 			end
+		end)
+	end
+
+	-- get graphic title
+	_graphic_get_title = function(user_input)
+		-- recommended for captioned figures and inline images
+		local prompt = "Enter title (recommended)"
+		vim.ui.input({ prompt = prompt }, function(input)
+			if input and input:len() ~= 0 then
+				user_input.title = input
+			end
+			_graphic_get_alt_text(user_input)
+		end)
+	end
+
+	-- get graphic alt text
+	_graphic_get_alt_text = function(user_input)
+		-- recommended for captioned figures and inline images
+		local prompt = "Enter alt text (recommended)"
+		vim.ui.input({ prompt = prompt }, function(input)
+			if input and input:len() ~= 0 then
+				user_input.alt = input
+			end
+			_graphic_get_width(user_input)
 		end)
 	end
 
 	-- get width class (optional)
-	_fig_get_width = function(user_input)
-		prompt = "Enter image width (optional)"
-		default = "80%"
+	_graphic_get_width = function(user_input)
+		local prompt = "Enter width (optional)"
+		local default = "80%"
 		vim.ui.input({ prompt = prompt, default = default }, function(input)
 			if input and input:len() ~= 0 then
 				user_input.width = input
 			end
-			_fig_insert(user_input)
+			_graphic_insert(user_input)
 		end)
 	end
 
-	-- insert figure link and link definition
-	_fig_insert = function(user_input)
-		-- assemble link
-		local link = sf("![%s][%s]", user_input.caption, user_input.id)
-		-- assemble link definition
-		local width = ""
-		if user_input.width and user_input.width:len() ~= 0 then
-			width = sf(" .class %s", user_input.width)
+	-- insert figure definition
+	_graphic_insert = function(user_input)
+		local next = next
+		local output = ""
+
+		-- caption (can be optional)
+		output = output .. "!["
+		if user_input.caption then
+			output = output .. user_input.caption
 		end
-		local id, path, caption = user_input.id, user_input.path, user_input.caption
-		local definition = sf('   [%s]: %s "%s" {#fig:%s%s}', id, path, caption, id, width)
-		-- insert link
-		local link_lines = { link, "" }
-		vim.api.nvim_put(link_lines, "l", true, true)
+		output = output .. "]"
+
+		-- bracketed
+		local bracketed = {}
+		-- • filepath (always required)
+		table.insert(bracketed, user_input.path)
+		-- • title (always optional)
+		if user_input.title then
+			local title = '"' .. user_input.title .. '"'
+			table.insert(bracketed, title)
+		end
+		-- add bracketed
+		if next(bracketed) ~= nil then
+			local all_bracketed = table.concat(bracketed, " ")
+			output = output .. "(" .. all_bracketed .. ")"
+		end
+
+		-- attributes
+		local attributes = {}
+		-- • id/label (can be optional)
+		if user_input.id then
+			local id = "#fig:" .. user_input.id
+			table.insert(attributes, id)
+		end
+		-- • alt text (always optional)
+		if user_input.alt then
+			local alt = 'alt="' .. user_input.alt .. '"'
+			table.insert(attributes, alt)
+		end
+		-- • width (always optional)
+		if user_input.width then
+			local width = ".class width=" .. user_input.width
+			table.insert(attributes, width)
+		end
+		-- add attributes
+		if next(attributes) ~= nil then
+			local all_attributes = table.concat(attributes, " ")
+			output = output .. "{" .. all_attributes .. "}"
+		end
+
+		-- inline
+		if user_input.type:match(type_img) then
+			output = output .. "\\ "
+		end
+
 		-- insert definition
-		local definition_lines = { "", definition }
-		local line, col = unpack(vim.api.nvim_win_get_cursor(0))
-		local last_line = vim.fn.line("$")
-		vim.api.nvim_win_set_cursor(0, { last_line, 1 })
-		vim.api.nvim_put(definition_lines, "l", true, false)
-		vim.api.nvim_win_set_cursor(0, { line, col })
+		local insert_lines = { output, "" }
+		vim.api.nvim_put(insert_lines, "l", true, true)
 	end
+
+	-- start user input
+	_graphic_get_type()
 end
 
 -- insert_figure_reference()
@@ -1786,10 +1963,10 @@ vim.keymap.set({ "n", "i" }, "<Leader>ab", dn_markdown.add_boilerplate, { desc =
 
 ---@tag dn_markdown.<Leader>fig
 ---@brief [[
----This mapping calls the function |dn_markdown.insert_figure| in modes "n"
+---This mapping calls the function |dn_markdown.insert_graphic| in modes "n"
 ---and "i".
 ---@brief ]]
-vim.keymap.set({ "n", "i" }, "<Leader>fig", dn_markdown.insert_figure, { desc = "Insert figure link and definition" })
+vim.keymap.set({ "n", "i" }, "<Leader>fig", dn_markdown.insert_graphic, { desc = "Insert figure/image definition" })
 
 -- \fil [n,i]
 
@@ -1848,17 +2025,16 @@ vim.api.nvim_create_user_command("MUAddBoilerplate", function()
 	dn_markdown.add_boilerplate()
 end, { desc = "Insert pander/markdown boilerplate" })
 
--- MUInsertFigure
+-- MUInsertGraphic
 
----@tag dn_markdown.MUInsertFigure
+---@tag dn_markdown.MUInsertGraphic
 ---@brief [[
----Calls function |dn_markdown.insert_figure| to insert a figure link on the
----following line and a corresponding link definition is added to the bottom
----of the document.
+---Calls function |dn_markdown.insert_graphic| to insert a captioned
+---figure or inline image definition on the following line.
 ---@brief ]]
-vim.api.nvim_create_user_command("MUInsertFigure", function()
-	dn_markdown.insert_figure()
-end, { desc = "Insert figure link and definition" })
+vim.api.nvim_create_user_command("MUInsertGraphic", function()
+	dn_markdown.insert_graphic()
+end, { desc = "Insert figure/image definition" })
 
 -- MUInsertFigureReference
 
@@ -1890,7 +2066,7 @@ end, { desc = "Insert an include directive" })
 ---caption and id on the following line.
 ---@brief ]]
 vim.api.nvim_create_user_command("MUInsertTable", function()
-	dn_markdown.insert_table_definition()()
+	dn_markdown.insert_table_definition()
 end, { desc = "Insert table definition" })
 
 -- MUInsertTableReference
