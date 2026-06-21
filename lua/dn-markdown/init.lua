@@ -119,8 +119,8 @@
 ---reference in square brackets with a prefix, for example: >md
 ---    [Picture @fig:label]
 ---<
----To reference multiple images at once enclose the references in square
----brackets and separate them with semicolons, for excample: >md
+---To reference multiple figures at once, enclose the references in square
+---brackets and separate them with semicolons, for example: >md
 ---    [@fig:label1;@fig:label2;@fig:label3]
 ---<
 ---This reference group syntax can be used for a single reference: >md
@@ -150,15 +150,45 @@
 ---
 ---    Table: A simple table. {#tbl:simple}
 ---<
----the definition is "Table: A simple table. {#tbl:simple}". (Strictly
----speaking, the filter expects the caption line to start with a colon, but
----it is possible to precede the colon with the word "Table" and this better
----conveys the line's meaning to the reader.)
+---the definition is "Table: A simple table. {#tbl:simple}".
+---
+---Note: Strictly speaking, the filter expects the caption line to start with a
+---        colon, but it is possible to precede the colon with the word "Table"
+---        and this better conveys the line's meaning to the reader.
 ---
 ---The definition is inserted on the following line using the
 ---|dn_markdown.insert_table_definition| function, which can be called using
 ---the command |dn_markdown.MUInsertTable| and mapping
 ---|dn_markdown.<Leader>tbl|.
+---
+---A helper function, mapping and command are provided to assist with adding
+---table references. The syntax used is that expected by the pandoc-crossref
+---filter (https://github.com/lierdakil/pandoc-crossref).
+---
+---The basic table reference format is: >md
+---    @tbl:label
+---<
+---or capitalised to capitalise the image reference: >md
+---    @Tbl:label
+---<
+---To change the default reference prefix in output, enclose the table
+---reference in square brackets with a prefix, for example: >md
+---    [Grid @tbl:label]
+---<
+---To reference multiple tables at once, enclose the references in square
+---brackets and separate them with semicolons, for example: >md
+---    [@tbl:label1;@tbl:label2;@tbl:label3]
+---<
+---This reference group syntax can be used for a single reference: >md
+---    [@tbl:label]
+---<
+---This may be preferred for singular references to ensure a consistent style
+---throughout a document.
+---
+---A table reference is inserted after the cursor using the
+---|dn_markdown.insert_table_reference| function, which can be called using
+---the command |dn_markdown.MUInsertTableReference| and mapping
+---|dn_markdown.<Leader>rtbl|.
 ---
 ---Include Files ~
 ---
@@ -1579,26 +1609,34 @@ function dn_markdown.insert_figure_reference()
 		return
 	end
 	-- search AST for defined figures
-	-- • this example figure definition:
-	--   >
-	--     ![Origami paper ready to fold][ready-to-fold]
-	--     ...
-	--     [ready-to-fold]: resources/base_01.png "Origami paper ready to fold" {#fig:ready-to-fold}
+	-- • this example figure definition: >md
+	--     ![Origami paper](1.png "Origami paper to fold"){#fig:paper-to-fold}
 	--   <
-	--   is represented deep in the ast output table as something like:
-	--   >
+	--   is represented deep in the ast output table as something like: >json
 	--     {
-	--       ["t"]  =  "Figure",
-	--       ["c"] = {
-	--         [1] = {
-	--           [1]  =  "fig:ready-to-fold",
-	--           [2] = {},
-	--           [3] = {},
-	--         },
-	--         [2] = { ... },
-	--         [3] = { ... },
-	--       },
-	--     },
+	--       "t": "Figure",
+	--       "c": [
+	--         [
+	--           "fig:paper-to-fold",
+	--           [],
+	--           []
+	--         ],
+	--         [
+	--           null,
+	--           [
+	--             {
+	--               "t": "Plain",
+	--               "c": [
+	--                 { "t": "Str", "c": "Origami" },
+	--                 { "t": "Space" },
+	--                 { "t": "Str", "c": "paper" }
+	--               ]
+	--             }
+	--           ]
+	--         ],
+	--         ...,
+	--       ],
+	--     }
 	--   <
 	local fig_labels = {}
 	local _examine_table
@@ -1843,16 +1881,18 @@ function dn_markdown.insert_table_reference()
 		return
 	end
 	-- search AST for defined tables
-	-- • this example table definition:
-	--   >
+	-- • this example table definition: >md
 	--     Table: The Forgotten Age cycle. [#tbl:forgotten]
 	--   <
-	--   is represented deep in the ast output table as something like:
-	--   >
+	--   is represented deep in the ast output table as something like: >json
 	--     {
 	--       "t": "Table",
 	--       "c": [
-	--         ["", [], []],
+	--         [
+	--           "tbl:forgotten",
+	--           [],
+	--           []
+	--         ],
 	--         [
 	--           null,
 	--           [
@@ -1865,9 +1905,7 @@ function dn_markdown.insert_table_reference()
 	--                 { "t": "Space" },
 	--                 { "t": "Str", "c": "Age" },
 	--                 { "t": "Space" },
-	--                 { "t": "Str", "c": "cycle." },
-	--                 { "t": "Space" },
-	--                 { "t": "Str", "c": "[#tbl:forgotten]" }
+	--                 { "t": "Str", "c": "cycle." }
 	--               ]
 	--             }
 	--           ]
@@ -1880,26 +1918,13 @@ function dn_markdown.insert_table_reference()
 	local _examine_table
 	_examine_table = function(subtable)
 		assert(type(subtable) == "table", "Expected table to examine, got " .. type(subtable))
-		-- extract table label if have found a 'Table' subtable
-		-- • this algorithm is more complex than for figures because:
-		--   - the label is buried 5 tables deep rather than 2
-		--   - one step requires extracting the last item in a list table
+		-- extract table (i.e., tbl) label if have found a 'Table' subtable
 		if subtable["t"] ~= nil and subtable["t"] == "Table" then
-			if
-				subtable["c"] ~= nil
-				and subtable["c"][2] ~= nil
-				and subtable["c"][2][2] ~= nil
-				and subtable["c"][2][2][1] ~= nil
-				and subtable["c"][2][2][1]["c"] ~= nil
-			then
-				local deep_subtable = subtable["c"][2][2][1]["c"]
-				local last_item = deep_subtable[#deep_subtable]
-				if last_item["c"] ~= nil then
-					local subvalue = last_item["c"]
-					local tbl_label = subvalue:match("^%[#tbl:(%S+)%]$")
-					if tbl_label ~= nil then
-						table.insert(tbl_labels, tbl_label)
-					end
+			if subtable["c"] ~= nil and subtable["c"][1] ~= nil and subtable["c"][1][1] ~= nil then
+				local subvalue = subtable["c"][1][1]
+				local tbl_label = subvalue:match("^tbl:(%S+)$")
+				if tbl_label ~= nil then
+					table.insert(tbl_labels, tbl_label)
 				end
 			end
 		end
